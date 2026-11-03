@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>九九モンスタークエスト</title>
+  <style>
+    /* 全体のデザイン設定 */
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'BIZ UDPGothic', sans-serif;
+      background: linear-gradient(180deg, #6ecbf5 0%, #d8f3dc 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+    }
+
+    /* ゲームのメインカード */
+    .game-container {
+      background: #ffffff;
+      width: 100%;
+      max-width: 440px;
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      border: 4px solid #ffbe0b;
+      text-align: center;
+      position: relative;
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* ----------------------------------------------------
+       各画面の切り替え（ホーム・バトル・リザルト）
+       ---------------------------------------------------- */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+    .screen.active {
+      display: flex;
+    }
+
+    /* ====================================================
+       1. ホーム（タイトル）画面
+       ==================================================== */
+    .title-logo {
+      font-size: 28px;
+      font-weight: 900;
+      color: #3a86ff;
+      margin-bottom: 4px;
+      text-shadow: 1px 2px 0px #bee1e6;
+    }
+    .title-sub {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 16px;
+      font-weight: bold;
+    }
+    .title-monster {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: bounce 1.8s infinite ease-in-out;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .btn-start {
+      background: #ff595e;
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: 900;
+      border: none;
+      border-radius: 20px;
+      padding: 16px 40px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #c9184a;
+      transition: all 0.1s;
+      width: 85%;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+    .btn-start:active {
+      transform: translateY(6px);
+      box-shadow: 0 0 0 #c9184a;
+    }
+
+    /* ランキング表共通スタイル */
+    .ranking-box {
+      width: 100%;
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 16px;
+      padding: 12px 14px;
+      text-align: left;
+    }
+    .ranking-title {
+      font-size: 14px;
+      font-weight: 900;
+      color: #495057;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .ranking-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 13px;
+    }
+    .ranking-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 6px;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .ranking-item:last-child {
+      border-bottom: none;
+    }
+    .ranking-item.new-record {
+      background: #fff3b0;
+      border-radius: 8px;
+      font-weight: bold;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.02); }
+    }
+    .rank-num {
+      width: 24px;
+      font-weight: 900;
+      color: #e76f51;
+    }
+
+    /* ====================================================
+       2. バトル（ゲームプレイ）画面
+       ==================================================== */
+    .header-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 13px;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    .badge {
+      background: #fff3b0;
+      padding: 6px 8px;
+      border-radius: 12px;
+      border: 2px solid #ffbe0b;
+      white-space: nowrap;
+    }
+    .badge.timer {
+      background: #e0f2fe;
+      border-color: #38bdf8;
+      color: #0369a1;
+    }
+    .badge.score {
+      background: #ffe3e0;
+      border-color: #ff6b6b;
+      color: #c92a2a;
+    }
+    .monster-stage {
+      background: #f0f7f4;
+      border-radius: 18px;
+      padding: 10px;
+      margin-bottom: 8px;
+      border: 2px dashed #95d5b2;
+      min-height: 110px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .monster-name {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 2px;
+      color: #2d6a4f;
+    }
+    .monster-avatar {
+      font-size: 52px;
+      line-height: 1;
+      margin-bottom: 2px;
+      transition: transform 0.2s;
+    }
+    .shake {
+      animation: shake 0.3s ease-in-out;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px) rotate(-5deg); }
+      75% { transform: translateX(10px) rotate(5deg); }
+    }
+    .question-box {
+      font-size: 38px;
+      font-weight: 900;
+      color: #3a86ff;
+      letter-spacing: 2px;
+      margin: 4px 0;
+    }
+    .input-display {
+      font-size: 30px;
+      font-weight: bold;
+      min-height: 44px;
+      border: 3px solid #ced4da;
+      border-radius: 12px;
+      margin: 0 auto 10px auto;
+      width: 65%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8f9fa;
+      color: #111;
+    }
+    .input-display.empty {
+      color: #adb5bd;
+      font-size: 17px;
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    .key-btn {
+      background: #ffffff;
+      border: 2px solid #dee2e6;
+      border-radius: 14px;
+      font-size: 24px;
+      font-weight: bold;
+      padding: 10px 0;
+      color: #333;
+      box-shadow: 0 4px 0 #ced4da;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: all 0.1s;
+    }
+    .key-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 #ced4da;
+    }
+    .key-btn.clear {
+      background: #ffccd5;
+      border-color: #ffb3c1;
+      color: #c9184a;
+      box-shadow: 0 4px 0 #ff758f;
+      font-size: 18px;
+    }
+    .key-btn.ok {
+      background: #c7f9cc;
+      border-color: #80ed99;
+      color: #2d6a4f;
+      box-shadow: 0 4px 0 #57cc99;
+      font-size: 16px;
+    }
+    .battle-msg {
+      font-size: 13px;
+      font-weight: bold;
+      color: #e76f51;
+      min-height: 20px;
+      margin-top: 6px;
+    }
+
+    /* ====================================================
+       3. リザルト（結果・ランキング）画面
+       ==================================================== */
+    .result-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: #2b2d42;
+      margin-bottom: 6px;
+    }
+    .result-rank-badge {
+      font-size: 18px;
+      background: #ffd166;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #5c3d00;
+      border: 2px solid #ffb703;
+    }
+    .score-breakdown {
+      width: 100%;
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 14px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.6;
+    }
+    .score-breakdown .row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed #dee2e6;
+      padding: 2px 0;
+    }
+    .score-breakdown .total-row {
+      display: flex;
+      justify-content: space-between;
+      border-top: 2px solid #adb5bd;
+      border-bottom: none;
+      margin-top: 4px;
+      padding-top: 4px;
+      font-weight: 900;
+      font-size: 16px;
+      color: #c92a2a;
+    }
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      margin-top: 12px;
+    }
+    .btn-sub {
+      flex: 1;
+      background: #e9ecef;
+      color: #495057;
+      font-size: 15px;
+      font-weight: bold;
+      border: 2px solid #ced4da;
+      border-radius: 14px;
+      padding: 12px 0;
+      cursor: pointer;
+    }
+    .btn-primary {
+      flex: 1.2;
+      background: #3a86ff;
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 14px;
+      padding: 12px 0;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #1d4ed8;
+    }
+    .btn-primary:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-container">
+
+    <!-- ==================== 1. ホーム画面 ==================== -->
+    <div id="screen-home" class="screen active">
+      <div class="title-logo">⚔️ 九九クエスト</div>
+      <div class="title-sub">めざせ！神速の九九マスター</div>
+      <div class="title-monster">🐲⚡</div>
+
+      <button class="btn-start" onclick="startGame()">スタート！</button>
+
+      <!-- ホームのハイスコア TOP 5 -->
+      <div class="ranking-box">
+        <div class="ranking-title">
+          <span>🏆 歴代ハイスコア TOP 5</span>
+          <span style="font-weight: normal; color: #6c757d;">10問スコア</span>
+        </div>
+        <ul class="ranking-list" id="home-ranking-list">
+          <li style="text-align: center; color: #888; padding: 10px 0;">まだ きろく がありません</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ==================== 2. バトル画面 ==================== -->
+    <div id="screen-battle" class="screen">
+      <!-- ヘッダー情報 -->
+      <div class="header-info">
+        <div class="badge" id="question-count">🚩 1 / 10</div>
+        <div class="badge timer" id="timer-display">⏱️ 00.0s</div>
+        <div class="badge score" id="score-display">💎 0 pt</div>
+      </div>
+
+      <!-- モンスター -->
+      <div class="monster-stage">
+        <div class="monster-name" id="monster-name">プチスライム</div>
+        <div class="monster-avatar" id="monster-avatar">🟢</div>
+      </div>
+
+      <!-- 問題 -->
+      <div class="question-box" id="question">7 × 8 ＝ ?</div>
+
+      <!-- 入力欄 -->
+      <div class="input-display empty" id="input-display">こたえを入力</div>
+
+      <!-- テンキー -->
+      <div class="keypad">
+        <button class="key-btn" onclick="pressNum(1)">1</button>
+        <button class="key-btn" onclick="pressNum(2)">2</button>
+        <button class="key-btn" onclick="pressNum(3)">3</button>
+        <button class="key-btn" onclick="pressNum(4)">4</button>
+        <button class="key-btn" onclick="pressNum(5)">5</button>
+        <button class="key-btn" onclick="pressNum(6)">6</button>
+        <button class="key-btn" onclick="pressNum(7)">7</button>
+        <button class="key-btn" onclick="pressNum(8)">8</button>
+        <button class="key-btn" onclick="pressNum(9)">9</button>
+        <button class="key-btn clear" onclick="clearInput()">けす</button>
+        <button class="key-btn" onclick="pressNum(0)">0</button>
+        <button class="key-btn ok" onclick="checkAnswer()">こうげき！</button>
+      </div>
+
+      <div class="battle-msg" id="battle-msg"></div>
+    </div>
+
+    <!-- ==================== 3. リザルト画面 ==================== -->
+    <div id="screen-result" class="screen">
+      <div class="result-title">🎉 クエストクリア！</div>
+      <div class="result-rank-badge" id="rank-badge">👑 九九マスター</div>
+
+      <!-- スコア内訳 -->
+      <div class="score-breakdown">
+        <div class="row">
+          <span>🎯 せいかいポイント</span>
+          <span id="res-accuracy-pts">+0 pt</span>
+        </div>
+        <div class="row">
+          <span>⚡ スピードボーナス (<span id="res-time-sec">0.0</span>秒)</span>
+          <span id="res-speed-pts">+0 pt</span>
+        </div>
+        <div class="row" id="row-perfect" style="color: #d90429; font-weight: bold;">
+          <span>🏆 ノーミスクリア賞</span>
+          <span id="res-perfect-pts">+0 pt</span>
+        </div>
+        <div class="total-row">
+          <span>💎 ごうけいスコア</span>
+          <span id="res-total-pts">0 pt</span>
+        </div>
+      </div>
+
+      <!-- 終了時のハイスコアランキング TOP 5 -->
+      <div class="ranking-box">
+        <div class="ranking-title">
+          <span>🏆 歴代ハイスコア TOP 5</span>
+          <span id="res-rank-notice" style="color: #e76f51;"></span>
+        </div>
+        <ul class="ranking-list" id="result-ranking-list"></ul>
+      </div>
+
+      <!-- ボタン群 -->
+      <div class="btn-group">
+        <button class="btn-sub" onclick="goHome()">🏠 ホームへ</button>
+        <button class="btn-primary" onclick="startGame()">もういちど！</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    /* ==========================================================
+       状態管理
+       ========================================================== */
+    const TOTAL_QUESTIONS = 10;
+    let questionList = [];
+    let currentIndex = 0;
+    let inputStr = "";
+
+    let accuracyScore = 0;
+    let perfectCount = 0;
+    let hasMistakeInCurrent = false;
+
+    let startTime = 0;
+    let timerInterval = null;
+    let elapsedSeconds = 0;
+
+    // 現在の画面名: 'home' | 'battle' | 'result'
+    let currentScreen = "home";
+
+    // モンスターリスト
+    const monsters = [
+      { name: "プチスライム", avatar: "🟢" },
+      { name: "イタズラこうもり", avatar: "🦇" },
+      { name: "オバケっち", avatar: "👻" },
+      { name: "サボテンナイト", avatar: "🌵" },
+      { name: "ほのおのオオカミ", avatar: "🐺" },
+      { name: "ゴーレム", avatar: "🗿" },
+      { name: "アイスバード", avatar: "🦅" },
+      { name: "サンダークラウン", avatar: "⚡" },
+      { name: "シャドウナイト", avatar: "🤺" },
+      { name: "キングドラゴン (ボス！)", avatar: "🐲" },
+    ];
+
+    /* ==========================================================
+       効果音 (Web Audio API)
+       ========================================================== */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playTone(freq, type, duration) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function playAttackSound() {
+      playTone(523.25, "triangle", 0.08);
+      setTimeout(() => playTone(659.25, "triangle", 0.12), 60);
+      setTimeout(() => playTone(783.99, "triangle", 0.2), 120);
+    }
+
+    function playMissSound() {
+      playTone(220, "sawtooth", 0.15);
+      setTimeout(() => playTone(180, "sawtooth", 0.25), 100);
+    }
+
+    function playFanfare() {
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((f, idx) => {
+        setTimeout(() => playTone(f, "triangle", 0.3), idx * 120);
+      });
+    }
+
+    /* ==========================================================
+       画面切り替え制御
+       ========================================================== */
+    function setScreen(screenName) {
+      currentScreen = screenName;
+      document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+      document.getElementById(`screen-${screenName}`).classList.add("active");
+    }
+
+    function goHome() {
+      clearInterval(timerInterval);
+      renderRankingList("home-ranking-list");
+      setScreen("home");
+    }
+
+    /* ==========================================================
+       ハイスコアランキング機能 (上位5件)
+       ========================================================== */
+    function getRanking() {
+      try {
+        return JSON.parse(localStorage.getItem("kuku_ranking_top5") || "[]");
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveScoreToRanking(score, timeSec, rankTitle) {
+      let ranking = getRanking();
+      const now = new Date();
+      const dateStr = `${now.getMonth() + 1}/${now.getDate()}`;
+
+      const newRecord = {
+        score: score,
+        time: timeSec.toFixed(1),
+        rankTitle: rankTitle,
+        date: dateStr,
+        id: Date.now() // 今回のプレイをハイライト特定するためのID
+      };
+
+      ranking.push(newRecord);
+      // スコア高い順（同点ならタイムが速い順）で並べ替え
+      ranking.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return parseFloat(a.time) - parseFloat(b.time);
+      });
+
+      // 上位5件に絞る
+      ranking = ranking.slice(0, 5);
+      localStorage.setItem("kuku_ranking_top5", JSON.stringify(ranking));
+
+      // 今回の記録がTOP5に入ったかどうか
+      const isRankIn = ranking.some(item => item.id === newRecord.id);
+      return { ranking, isRankIn, newRecordId: newRecord.id };
+    }
+
+    function renderRankingList(elementId, highlightId = null) {
+      const el = document.getElementById(elementId);
+      const ranking = getRanking();
+
+      if (!ranking || ranking.length === 0) {
+        el.innerHTML = '<li style="text-align: center; color: #888; padding: 10px 0;">まだ きろく がありません</li>';
+        return;
+      }
+
+      const medals = ["🥇", "🥈", "🥉", "4位", "5位"];
+      el.innerHTML = ranking.map((item, idx) => {
+        const isHighlight = (item.id === highlightId);
+        return `
+          <li class="ranking-item ${isHighlight ? 'new-record' : ''}">
+            <span class="rank-num">${medals[idx]}</span>
+            <span style="flex: 1; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <strong>${item.score} pt</strong> (${item.time}秒)
+            </span>
+            <span style="color: #6c757d; font-size: 11px;">${item.date}</span>
+          </li>
+        `;
+      }).join("");
+    }
+
+    /* ==========================================================
+       ゲーム進行ロジック
+       ========================================================== */
+    function generate10Questions() {
+      const danList = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      danList.push(Math.floor(Math.random() * 9) + 1);
+
+      const questions = danList.map(dan => {
+        const num2 = Math.floor(Math.random() * 9) + 1;
+        return { num1: dan, num2: num2, ans: dan * num2 };
+      });
+
+      for (let i = questions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [questions[i], questions[j]] = [questions[j], questions[i]];
+      }
+
+      return questions;
+    }
+
+    function startGame() {
+      questionList = generate10Questions();
+      currentIndex = 0;
+      accuracyScore = 0;
+      perfectCount = 0;
+      hasMistakeInCurrent = false;
+
+      setScreen("battle");
+
+      // タイマー開始
+      clearInterval(timerInterval);
+      startTime = Date.now();
+      timerInterval = setInterval(() => {
+        elapsedSeconds = (Date.now() - startTime) / 1000;
+        document.getElementById("timer-display").textContent = `⏱️ ${elapsedSeconds.toFixed(1)}s`;
+      }, 100);
+
+      updateHeader();
+      showCurrentQuestion();
+    }
+
+    function showCurrentQuestion() {
+      hasMistakeInCurrent = false;
+      const q = questionList[currentIndex];
+      const m = monsters[currentIndex % monsters.length];
+
+      document.getElementById("monster-name").textContent = m.name;
+      document.getElementById("monster-avatar").textContent = m.avatar;
+      document.getElementById("question").textContent = `${q.num1} × ${q.num2} ＝ ?`;
+      document.getElementById("battle-msg").textContent = "";
+
+      clearInput();
+      updateHeader();
+    }
+
+    function updateHeader() {
+      document.getElementById("question-count").textContent = `🚩 ${currentIndex + 1} / ${TOTAL_QUESTIONS}`;
+      document.getElementById("score-display").textContent = `💎 ${accuracyScore} pt`;
+    }
+
+    function pressNum(digit) {
+      if (inputStr.length >= 2) return;
+      inputStr += digit.toString();
+      updateDisplay();
+    }
+
+    function clearInput() {
+      inputStr = "";
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      const display = document.getElementById("input-display");
+      if (inputStr === "") {
+        display.textContent = "こたえを入力";
+        display.classList.add("empty");
+      } else {
+        display.textContent = inputStr;
+        display.classList.remove("empty");
+      }
+    }
+
+    function checkAnswer() {
+      if (inputStr === "") return;
+
+      const playerAns = parseInt(inputStr, 10);
+      const q = questionList[currentIndex];
+      const msg = document.getElementById("battle-msg");
+      const avatar = document.getElementById("monster-avatar");
+
+      if (playerAns === q.ans) {
+        // せいかい
+        playAttackSound();
+        avatar.classList.remove("shake");
+        void avatar.offsetWidth;
+        avatar.classList.add("shake");
+
+        let pts = 0;
+        if (!hasMistakeInCurrent) {
+          pts = 100;
+          perfectCount++;
+          msg.textContent = `⚔️ 一発せいかい！ (+100 pt)`;
+        } else {
+          pts = 50;
+          msg.textContent = `⚔️ ナイスリトライ！ (+50 pt)`;
+        }
+        accuracyScore += pts;
+        updateHeader();
+
+        setTimeout(() => {
+          currentIndex++;
+          if (currentIndex < TOTAL_QUESTIONS) {
+            showCurrentQuestion();
+          } else {
+            showResult();
+          }
+        }, 650);
+
+      } else {
+        // まちがい
+        hasMistakeInCurrent = true;
+        playMissSound();
+        msg.textContent = `💦 ちがうよ！ もういちど！`;
+        clearInput();
+      }
+    }
+
+    /* ==========================================================
+       リザルト画面表示
+       ========================================================== */
+    function showResult() {
+      clearInterval(timerInterval);
+      playFanfare();
+
+      const finalTimeSec = elapsedSeconds;
+
+      // スピードボーナス (60秒基準)
+      let speedBonus = Math.max(0, Math.round((60 - finalTimeSec) * 10));
+      if (speedBonus > 500) speedBonus = 500;
+
+      // ノーミスクリア賞
+      const isPerfect = (perfectCount === TOTAL_QUESTIONS);
+      const perfectBonus = isPerfect ? 300 : 0;
+
+      const totalGameScore = accuracyScore + speedBonus + perfectBonus;
+
+      // ランク称号
+      let rankText = "🌱 九九ルーキー";
+      if (isPerfect && finalTimeSec <= 35) {
+        rankText = "👑 神速の九九マスター！";
+      } else if (isPerfect) {
+        rankText = "🌟 パーフェクト・ゆうしゃ！";
+      } else if (perfectCount >= 8) {
+        rankText = "⚔️ 九九ナイト";
+      } else {
+        rankText = "🛡️ 九九ファイター";
+      }
+
+      // ランキング保存・更新
+      const { isRankIn, newRecordId } = saveScoreToRanking(totalGameScore, finalTimeSec, rankText);
+
+      // リザルトUI反映
+      document.getElementById("rank-badge").textContent = rankText;
+      document.getElementById("res-accuracy-pts").textContent = `+${accuracyScore} pt (${perfectCount}/${TOTAL_QUESTIONS}問 一発正解)`;
+      document.getElementById("res-time-sec").textContent = finalTimeSec.toFixed(1);
+      document.getElementById("res-speed-pts").textContent = `+${speedBonus} pt`;
+
+      const perfectRow = document.getElementById("row-perfect");
+      if (isPerfect) {
+        perfectRow.style.display = "flex";
+        document.getElementById("res-perfect-pts").textContent = `+${perfectBonus} pt`;
+      } else {
+        perfectRow.style.display = "none";
+      }
+
+      document.getElementById("res-total-pts").textContent = `${totalGameScore} pt`;
+
+      // ランキング表示（ランクインなら黄色くハイライト）
+      document.getElementById("res-rank-notice").textContent = isRankIn ? "🎉 ランクイン！" : "";
+      renderRankingList("result-ranking-list", isRankIn ? newRecordId : null);
+
+      setScreen("result");
+    }
+
+    /* キーボード入力サポート */
+    window.addEventListener("keydown", (e) => {
+      if (currentScreen === "home") {
+        if (e.key === "Enter" || e.key === " ") startGame();
+        return;
+      }
+      if (currentScreen === "result") {
+        if (e.key === "Enter" || e.key === " ") startGame();
+        return;
+      }
+      if (currentScreen === "battle") {
+        if (e.key >= "0" && e.key <= "9") {
+          pressNum(parseInt(e.key, 10));
+        } else if (e.key === "Enter") {
+          checkAnswer();
+        } else if (e.key === "Backspace" || e.key === "Escape") {
+          clearInput();
+        }
+      }
+    });
+
+    // 初期化：ホーム画面を表示
+    goHome();
+  </script>
+</body>
+</html>
